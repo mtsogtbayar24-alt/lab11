@@ -26,6 +26,16 @@ export interface Member {
   createdAt: string;
 }
 
+export interface Loan {
+  id: string;
+  bookId: string;
+  memberId: string;
+  loanedAt: string;
+  dueAt: string;
+  returnedAt: string | null;
+  renewalCount: number;
+}
+
 export interface PaginationResult<T> {
   items: T[];
   page: number;
