@@ -1,0 +1,608 @@
+openapi: 3.0.3
+info:
+  title: Library Lending API
+  version: 1.0.0
+  description: |
+    REST API for books, members, loans, and reservations.
+    Authentication is bearer-token based through /auth/login.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: Auth
+  - name: Books
+  - name: Members
+  - name: Loans
+  - name: Reservations
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: UUID
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance]
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [LIBRARIAN, MEMBER]
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+        isbn:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        availableCopies:
+          type: integer
+        totalCopies:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    Loan:
+      type: object
+      properties:
+        id:
+          type: string
+        bookId:
+          type: string
+        memberId:
+          type: string
+        loanedAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date-time
+        returnedAt:
+          type: string
+          nullable: true
+          format: date-time
+        renewalCount:
+          type: integer
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+        bookId:
+          type: string
+        memberId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, FULFILLED, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+    PaginatedBooks:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+    PaginatedMembers:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+    PaginatedLoans:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Loan'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+    PaginatedReservations:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reservation'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Missing credentials
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Invalid credentials
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /books:
+    get:
+      tags: [Books]
+      summary: List books with pagination, filtering, and sorting
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: title
+          schema: { type: string }
+        - in: query
+          name: author
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [title, author, createdAt] }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: Paginated books
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBooks'
+    post:
+      tags: [Books]
+      summary: Create a book
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isbn, title, author, totalCopies]
+              properties:
+                isbn: { type: string }
+                title: { type: string }
+                author: { type: string }
+                totalCopies: { type: integer, minimum: 1 }
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Role not allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /books/{id}:
+    get:
+      tags: [Books]
+      summary: Get one book
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Book found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /members:
+    get:
+      tags: [Members]
+      summary: List members
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: email
+          schema: { type: string }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [name, email, createdAt] }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: Paginated members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMembers'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Role not allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags: [Members]
+      summary: Create a member
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                active: { type: boolean }
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '409':
+          description: Duplicate member
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /loans:
+    get:
+      tags: [Loans]
+      summary: List loans
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: memberId
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [loanedAt, dueAt, memberId] }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: Paginated loans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLoans'
+    post:
+      tags: [Loans]
+      summary: Create a loan
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberId, bookId]
+              properties:
+                memberId: { type: string }
+                bookId: { type: string }
+      responses:
+        '201':
+          description: Loan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          description: Book or member not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Active loan limit exceeded
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: No copy available
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /loans/{id}/renew:
+    post:
+      tags: [Loans]
+      summary: Renew a loan
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Loan renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          description: Loan not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Loan cannot be renewed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /loans/{id}/return:
+    post:
+      tags: [Loans]
+      summary: Return a loan
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Loan returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          description: Loan not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Loan already returned
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: List reservations
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: memberId
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [PENDING, FULFILLED, CANCELLED] }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [createdAt, status, memberId] }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: Paginated reservations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservations'
+    post:
+      tags: [Reservations]
+      summary: Create a reservation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberId, bookId]
+              properties:
+                memberId: { type: string }
+                bookId: { type: string }
+      responses:
+        '201':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '404':
+          description: Book or member not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Duplicate pending reservation
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Book still has available copies
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /reservations/{id}:
+    delete:
+      tags: [Reservations]
+      summary: Cancel a reservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Reservation cancelled
+        '404':
+          description: Reservation not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
