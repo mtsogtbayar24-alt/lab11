@@ -1,0 +1,333 @@
+{
+  "info": {
+    "name": "Library Lending API",
+    "_postman_id": "74efc0d6-0f1f-4cbe-a237-0d1f0e8f7c11",
+    "description": "Postman collection for the Bie Daalt 11 Library Lending API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login as librarian",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('token exists', function () { pm.expect(pm.response.json().accessToken).to.be.a('string'); });",
+              "pm.environment.set('accessToken', pm.response.json().accessToken);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"librarian\",\n  \"password\": \"libpass\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "List books",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('items array exists', function () { pm.expect(pm.response.json().items).to.be.an('array'); });",
+              "pm.environment.set('bookId', pm.response.json().items[0].id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/books?page=1&size=10&sortBy=title&order=asc"
+      }
+    },
+    {
+      "name": "Create member",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('member id exists', function () { pm.expect(pm.response.json().id).to.be.a('string'); });",
+              "pm.environment.set('memberId', pm.response.json().id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Member\",\n  \"email\": \"postman.member@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/members"
+      }
+    },
+    {
+      "name": "List members",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('totalItems is numeric', function () { pm.expect(pm.response.json().totalItems).to.be.a('number'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/members?page=1&size=10&sortBy=name&order=asc"
+      }
+    },
+    {
+      "name": "Create book",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('book created', function () { pm.expect(pm.response.json().title).to.eql('Postman Driven APIs'); });",
+              "pm.environment.set('bookId', pm.response.json().id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"isbn\": \"978-1-23456-789-0\",\n  \"title\": \"Postman Driven APIs\",\n  \"author\": \"Codex\",\n  \"totalCopies\": 2,\n  \"tags\": [\"api\", \"testing\"]\n}"
+        },
+        "url": "{{baseUrl}}/books"
+      }
+    },
+    {
+      "name": "Get book by id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('returned id matches environment', function () { pm.expect(pm.response.json().id).to.eql(pm.environment.get('bookId')); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/books/{{bookId}}"
+      }
+    },
+    {
+      "name": "Create loan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('loan id exists', function () { pm.expect(pm.response.json().id).to.be.a('string'); });",
+              "pm.environment.set('loanId', pm.response.json().id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"memberId\": \"{{memberId}}\",\n  \"bookId\": \"{{bookId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/loans"
+      }
+    },
+    {
+      "name": "List loans",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('loans array exists', function () { pm.expect(pm.response.json().items).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/loans?page=1&size=10&memberId={{memberId}}"
+      }
+    },
+    {
+      "name": "Renew loan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('renewal count is one', function () { pm.expect(pm.response.json().renewalCount).to.eql(1); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/loans/{{loanId}}/renew"
+      }
+    },
+    {
+      "name": "Return loan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('returnedAt is present', function () { pm.expect(pm.response.json().returnedAt).to.be.a('string'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/loans/{{loanId}}/return"
+      }
+    },
+    {
+      "name": "Unauthorized loans request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+              "pm.test('problem details content type', function () { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/loans"
+      }
+    },
+    {
+      "name": "Reservation validation when copies exist",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 422', function () { pm.response.to.have.status(422); });",
+              "pm.test('problem title exists', function () { pm.expect(pm.response.json().title).to.be.a('string'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"memberId\": \"{{memberId}}\",\n  \"bookId\": \"{{bookId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/reservations"
+      }
+    }
+  ]
+}
