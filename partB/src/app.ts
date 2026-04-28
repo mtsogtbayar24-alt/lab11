@@ -2,7 +2,7 @@ import cors from 'cors';
 import express, { Request, Response } from 'express';
 import { AuthenticatedRequest, login, requireAuth, requireRole } from './auth';
 import { problem, sendProblem } from './problem';
-import { Book, Loan, Member } from './types';
+import { Book, Loan, Member, Reservation } from './types';
 import { LibraryStore, paginate, sortItems } from './store';
 
 const MAX_ACTIVE_LOANS = 5;
@@ -198,7 +198,67 @@ export function createApp(store: LibraryStore = new LibraryStore()) {
       book.availableCopies += 1;
     }
 
+    const reservation = store.reservations.find((item) => item.bookId === loan.bookId && item.status === 'PENDING');
+    if (reservation) {
+      reservation.status = 'FULFILLED';
+    }
+
     response.status(200).json(loan);
+  });
+
+  app.get('/reservations', requireAuth, (request: AuthenticatedRequest, response: Response) => {
+    const page = parsePage(request.query.page, 1);
+    const size = parsePage(request.query.size, 10);
+    const memberId = String(request.query.memberId ?? '');
+    const status = String(request.query.status ?? '');
+    const sortBy = request.query.sortBy as keyof Reservation | undefined;
+    const order = request.query.order === 'desc' ? 'desc' : 'asc';
+
+    let items = store.reservations.filter((reservation) =>
+      (memberId ? reservation.memberId === memberId : true) &&
+      (status ? reservation.status === status : true)
+    );
+    items = sortItems(items, sortBy, order);
+    response.status(200).json(paginate(items, page, size));
+  });
+
+  app.post('/reservations', requireAuth, (request: AuthenticatedRequest, response: Response) => {
+    const { memberId, bookId } = request.body ?? {};
+    const member = store.members.find((item) => item.id === memberId && item.active);
+    if (!member) {
+      sendProblem(response, problem(404, 'Not Found', 'Member not found', request.originalUrl));
+      return;
+    }
+
+    const book = store.books.find((item) => item.id === bookId);
+    if (!book) {
+      sendProblem(response, problem(404, 'Not Found', 'Book not found', request.originalUrl));
+      return;
+    }
+
+    if (book.availableCopies > 0) {
+      sendProblem(response, problem(422, 'Unprocessable Entity', 'Reservations are only allowed when no copies are available', request.originalUrl));
+      return;
+    }
+
+    if (store.reservations.some((reservation) => reservation.bookId === bookId && reservation.memberId === memberId && reservation.status === 'PENDING')) {
+      sendProblem(response, problem(409, 'Conflict', 'A pending reservation already exists for this member and book', request.originalUrl));
+      return;
+    }
+
+    const reservation = store.createReservation({ memberId, bookId, status: 'PENDING' });
+    response.status(201).json(reservation);
+  });
+
+  app.delete('/reservations/:id', requireAuth, (request: AuthenticatedRequest, response: Response) => {
+    const reservation = store.reservations.find((item) => item.id === request.params.id);
+    if (!reservation) {
+      sendProblem(response, problem(404, 'Not Found', 'Reservation not found', request.originalUrl));
+      return;
+    }
+
+    reservation.status = 'CANCELLED';
+    response.status(204).send();
   });
 
   app.use((request: Request, response: Response) => {

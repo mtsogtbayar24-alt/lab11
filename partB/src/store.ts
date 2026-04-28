@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Book, Loan, Member, PaginationResult } from './types';
+import { Book, Loan, Member, PaginationResult, Reservation } from './types';
 
 export class LibraryStore {
   public readonly books: Book[] = [
@@ -36,6 +36,7 @@ export class LibraryStore {
   ];
 
   public readonly loans: Loan[] = [];
+  public readonly reservations: Reservation[] = [];
 
   createBook(input: Omit<Book, 'id' | 'createdAt'>): Book {
     const book: Book = { ...input, id: randomUUID(), createdAt: new Date().toISOString() };
@@ -53,6 +54,12 @@ export class LibraryStore {
     const loan: Loan = { ...input, id: randomUUID() };
     this.loans.push(loan);
     return loan;
+  }
+
+  createReservation(input: Omit<Reservation, 'id' | 'createdAt'>): Reservation {
+    const reservation: Reservation = { ...input, id: randomUUID(), createdAt: new Date().toISOString() };
+    this.reservations.push(reservation);
+    return reservation;
   }
 }
 

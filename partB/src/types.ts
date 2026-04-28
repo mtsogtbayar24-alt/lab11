@@ -36,6 +36,14 @@ export interface Loan {
   renewalCount: number;
 }
 
+export interface Reservation {
+  id: string;
+  bookId: string;
+  memberId: string;
+  status: 'PENDING' | 'FULFILLED' | 'CANCELLED';
+  createdAt: string;
+}
+
 export interface PaginationResult<T> {
   items: T[];
   page: number;
